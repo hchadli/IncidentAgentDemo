@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/IncidentAgentDemo.Tests/IncidentAgentDemo.Tests.csproj" />
+  </Folder>
+  <Project Path="src/IncidentAgentDemo.AgentHost/IncidentAgentDemo.AgentHost.csproj" />
+  <Project Path="src/IncidentAgentDemo.Api/IncidentAgentDemo.Api.csproj" />
+  <Project Path="src/IncidentAgentDemo.Contracts/IncidentAgentDemo.Contracts.csproj" />
+  <Project Path="src/IncidentAgentDemo.McpServer/IncidentAgentDemo.McpServer.csproj" />
+  <Project Path="src/IncidentAgentDemo.Web/IncidentAgentDemo.Web.csproj" />
+</Solution>

@@ -1,0 +1,248 @@
+@page "/"
+@using IncidentAgentDemo.AgentHost
+@using IncidentAgentDemo.Contracts
+@inject IncidentAgentRunner AgentRunner
+@rendermode InteractiveServer
+
+<!-- LEFT SIDEBAR -->
+<div class="sidebar-panel">
+    <div class="sidebar-header">
+        <h4>🔥 Incident Agent</h4>
+        <span class="subtitle">AI-Powered Ops Dashboard</span>
+    </div>
+
+    <div class="sidebar-section">
+        <h6>Quick Prompts</h6>
+        <button class="prompt-btn" @onclick='() => SendPromptAsync("Show me open production incidents for Payments")'>
+            💳 Payments Incidents
+        </button>
+        <button class="prompt-btn" @onclick='() => SendPromptAsync("What is the health of the Identity service?")'>
+            🔐 Identity Health
+        </button>
+        <button class="prompt-btn" @onclick='() => SendPromptAsync("Summarise the risk for Notifications")'>
+            📊 Notifications Risk
+        </button>
+        <button class="prompt-btn" @onclick='() => SendPromptAsync("Show me incident 2 and tell me if it is critical")'>
+            🔍 Incident #2 Detail
+        </button>
+        <button class="prompt-btn" @onclick='() => SendPromptAsync("Show me all open incidents across all services and rank them by severity")'>
+            📋 All Open Incidents
+        </button>
+    </div>
+
+    <div class="sidebar-section">
+        <h6>Architecture</h6>
+        <button class="prompt-btn arch-btn" @onclick="ToggleArchitecture">
+            🏗️ Explain Architecture
+        </button>
+    </div>
+
+    @if (_showArchitecture)
+    {
+        <div class="architecture-info">
+            <p><strong>Flow:</strong></p>
+            <ol>
+                <li>User sends prompt</li>
+                <li>Agent evaluates with LLM</li>
+                <li>LLM requests tool calls</li>
+                <li>MCP executes tools via API</li>
+                <li>API queries SQLite</li>
+                <li>Results flow back to agent</li>
+                <li>Agent loops if more data needed</li>
+                <li>Final answer displayed</li>
+            </ol>
+        </div>
+    }
+</div>
+
+<!-- CENTER PANEL -->
+<div class="center-panel">
+    <div class="chat-header">
+        <h5>💬 Incident Agent Chat</h5>
+    </div>
+
+    <div class="chat-messages">
+        @if (_responses.Count == 0 && !_isLoading)
+        {
+            <div class="empty-state">
+                <div class="empty-icon">🤖</div>
+                <h5>Welcome to Incident Agent</h5>
+                <p>Ask about incidents, service health, or risk summaries.<br />Use the quick prompts on the left to get started.</p>
+            </div>
+        }
+
+        @foreach (var entry in _responses)
+        {
+            <div class="chat-entry">
+                <div class="user-message">
+                    <span class="msg-role">You</span>
+                    <p>@entry.Prompt</p>
+                </div>
+                <div class="agent-message @(entry.Response.IsError ? "error-message" : "")">
+                    <span class="msg-role">Agent</span>
+                    <div class="response-content">@((MarkupString)FormatMarkdown(entry.Response.FinalAnswer))</div>
+                </div>
+            </div>
+        }
+
+        @if (_isLoading)
+        {
+            <div class="loading-indicator">
+                <div class="spinner"></div>
+                <span>Agent is thinking...</span>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="error-banner">
+                ⚠️ @_errorMessage
+            </div>
+        }
+    </div>
+
+    <div class="chat-input-area">
+        <input type="text"
+               class="chat-input"
+               placeholder="Ask about incidents, service health, or risk..."
+               @bind="_currentPrompt"
+               @bind:event="oninput"
+               @onkeydown="HandleKeyDown"
+               disabled="@_isLoading" />
+        <button class="send-btn" @onclick="HandleSendAsync" disabled="@(_isLoading || string.IsNullOrWhiteSpace(_currentPrompt))">
+            Send
+        </button>
+    </div>
+</div>
+
+<!-- RIGHT PANEL — AGENT TRACE -->
+<div class="trace-panel">
+    <div class="trace-header">
+        <h6>🔍 Agent Trace</h6>
+        @if (_traceSteps.Count > 0)
+        {
+            <button class="clear-trace-btn" @onclick="() => _traceSteps.Clear()">Clear</button>
+        }
+    </div>
+
+    <div class="trace-content">
+        @if (_traceSteps.Count == 0)
+        {
+            <div class="trace-empty">Send a prompt to see the agent's decision process here.</div>
+        }
+
+        @foreach (var step in _traceSteps)
+        {
+            <div class="trace-step @GetTraceStepClass(step.StepType)">
+                <div class="trace-icon">@GetTraceIcon(step.StepType)</div>
+                <div class="trace-body">
+                    <span class="trace-type">@step.StepType</span>
+                    <span class="trace-time">@step.Timestamp.ToString("HH:mm:ss.fff")</span>
+                    <p class="trace-msg">@step.Message</p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string _currentPrompt = "";
+    private bool _isLoading;
+    private string? _errorMessage;
+    private bool _showArchitecture;
+    private readonly List<ChatEntry> _responses = [];
+    private readonly List<AgentTraceStep> _traceSteps = [];
+
+    private void ToggleArchitecture() => _showArchitecture = !_showArchitecture;
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !_isLoading && !string.IsNullOrWhiteSpace(_currentPrompt))
+            await HandleSendAsync();
+    }
+
+    private async Task HandleSendAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_currentPrompt)) return;
+        await SendPromptAsync(_currentPrompt);
+        _currentPrompt = "";
+    }
+
+    private async Task SendPromptAsync(string prompt)
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _traceSteps.Clear();
+        StateHasChanged();
+
+        try
+        {
+            var response = await AgentRunner.RunAsync(prompt);
+
+            foreach (var step in response.TraceSteps)
+                _traceSteps.Add(step);
+
+            _responses.Add(new ChatEntry(prompt, response));
+
+            if (response.IsError)
+                _errorMessage = "Agent encountered an error. See trace for details.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Unexpected error: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string FormatMarkdown(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+
+        var html = System.Web.HttpUtility.HtmlEncode(text);
+        html = html.Replace("\n", "<br />");
+
+        // Bold
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+
+        // Severity badges
+        html = html.Replace("High", "<span class='badge severity-high'>High</span>")
+                    .Replace("Medium", "<span class='badge severity-medium'>Medium</span>")
+                    .Replace("Low", "<span class='badge severity-low'>Low</span>")
+                    .Replace("Degraded", "<span class='badge health-degraded'>Degraded</span>")
+                    .Replace("Healthy", "<span class='badge health-healthy'>Healthy</span>")
+                    .Replace("Down", "<span class='badge health-down'>Down</span>");
+
+        return html;
+    }
+
+    private static string GetTraceStepClass(string stepType) => stepType switch
+    {
+        "Decision" => "trace-decision",
+        "ToolSelected" => "trace-tool",
+        "ToolArgs" => "trace-tool",
+        "ToolResponse" => "trace-tool-response",
+        "Error" => "trace-error",
+        "Complete" or "Result" => "trace-complete",
+        _ => "trace-info"
+    };
+
+    private static string GetTraceIcon(string stepType) => stepType switch
+    {
+        "Prompt" => "📝",
+        "AgentLoop" => "🔄",
+        "Decision" => "🧠",
+        "ToolSelected" => "🔧",
+        "ToolArgs" => "📦",
+        "ToolResponse" => "📨",
+        "Complete" => "✅",
+        "Result" => "🎯",
+        "Error" => "❌",
+        _ => "ℹ️"
+    };
+
+    private sealed record ChatEntry(string Prompt, AgentResponse Response);
+}

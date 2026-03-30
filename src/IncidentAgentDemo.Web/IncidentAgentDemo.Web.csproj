@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\IncidentAgentDemo.AgentHost\IncidentAgentDemo.AgentHost.csproj" />
+    <ProjectReference Include="..\IncidentAgentDemo.Contracts\IncidentAgentDemo.Contracts.csproj" />
+    <ProjectReference Include="..\IncidentAgentDemo.McpServer\IncidentAgentDemo.McpServer.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+</Project>
