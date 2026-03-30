@@ -40,12 +40,12 @@ public sealed class OpenAiAgentClient
         return result.Value;
     }
 
-    public CreateResponseOptions BuildOptions()
+    public CreateResponseOptions BuildOptions(string? composedInstructions = null)
     {
         var options = new CreateResponseOptions
         {
             Model = _model,
-            Instructions = """
+            Instructions = composedInstructions ?? """
                 You are an expert incident management assistant for a cloud platform.
                 You have access to tools that query real operational data.
 

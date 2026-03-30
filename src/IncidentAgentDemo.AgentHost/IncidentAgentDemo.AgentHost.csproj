@@ -18,4 +18,8 @@
     <NoWarn>OPENAI001</NoWarn>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="IncidentAgentDemo.Tests" />
+  </ItemGroup>
+
 </Project>

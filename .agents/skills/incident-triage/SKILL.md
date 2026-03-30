@@ -1,3 +1,8 @@
+---
+name: incident-triage
+description: Retrieves and analyzes open incidents for a service, providing severity assessment and prioritization guidance.
+---
+
 # Skill: Incident Triage
 
 **Name:** incident-triage  

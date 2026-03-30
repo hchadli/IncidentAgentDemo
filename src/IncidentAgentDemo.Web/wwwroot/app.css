@@ -353,9 +353,118 @@ html, body {
 .trace-decision { border-left-color: #f59e0b; background: #fffbeb; }
 .trace-tool { border-left-color: #3b82f6; background: #eff6ff; }
 .trace-tool-response { border-left-color: #10b981; background: #ecfdf5; }
+.trace-prompt-asset { border-left-color: #8b5cf6; background: #f5f3ff; }
 .trace-error { border-left-color: #ef4444; background: #fef2f2; }
 .trace-complete { border-left-color: #22c55e; background: #f0fdf4; }
 .trace-info { border-left-color: #94a3b8; }
+
+/* === PROMPT ASSETS PANEL === */
+.prompt-assets-info {
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8f7ff;
+    font-size: 0.78rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.assets-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.8rem;
+}
+
+.reload-assets-btn {
+    background: none;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    padding: 0.1rem 0.4rem;
+    cursor: pointer;
+    color: #6b7280;
+    transition: all 0.15s;
+}
+
+.reload-assets-btn:hover {
+    border-color: #8b5cf6;
+    color: #8b5cf6;
+}
+
+.asset-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #4b5563;
+}
+
+.asset-loaded { color: #16a34a; font-weight: 500; }
+.asset-missing { color: #dc2626; font-weight: 500; }
+.asset-none { color: #9ca3af; font-style: italic; }
+
+.skill-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding-left: 0.25rem;
+}
+
+.skill-tag {
+    display: inline-block;
+    padding: 0.08rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    background: #ede9fe;
+    color: #7c3aed;
+    border: 1px solid #c4b5fd;
+}
+
+.asset-warning {
+    color: #d97706;
+    font-size: 0.72rem;
+}
+
+.toggle-debug-btn {
+    background: none;
+    border: none;
+    color: #6366f1;
+    font-size: 0.72rem;
+    cursor: pointer;
+    padding: 0.15rem 0;
+    text-align: left;
+}
+
+.toggle-debug-btn:hover {
+    text-decoration: underline;
+}
+
+.composed-prompt-view {
+    max-height: 200px;
+    overflow-y: auto;
+    background: #1e293b;
+    color: #e2e8f0;
+    border-radius: 6px;
+    padding: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.composed-prompt-view pre {
+    margin: 0;
+    font-size: 0.68rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.trace-header-actions {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+}
 
 /* === BADGES === */
 .badge {

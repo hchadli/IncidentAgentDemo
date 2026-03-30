@@ -7,6 +7,8 @@ namespace IncidentAgentDemo.AgentHost;
 public sealed class IncidentAgentRunner(
     OpenAiAgentClient agentClient,
     McpToolExecutor toolExecutor,
+    IPromptAssetLoader assetLoader,
+    IPromptComposer promptComposer,
     ILogger<IncidentAgentRunner> logger)
 {
     private const int MaxIterations = 10;
@@ -14,14 +16,51 @@ public sealed class IncidentAgentRunner(
     public async Task<AgentResponse> RunAsync(string userPrompt, CancellationToken ct = default)
     {
         var trace = new List<AgentTraceStep>();
+        var warnings = new List<string>();
+        var loadedSkillNames = new List<string>();
+        var usedAgentsFile = false;
+        string? composedPrompt = null;
 
         try
         {
             AddTrace(trace, "Prompt", $"User prompt received: \"{Truncate(userPrompt, 120)}\"");
 
-            var options = agentClient.BuildOptions();
+            // --- Prompt Asset Loading ---
+            AddTrace(trace, "PromptAsset", "Loading AGENTS.md...");
+            var agentsInstructions = await assetLoader.LoadAgentsInstructionsAsync(ct);
+            usedAgentsFile = agentsInstructions is not null;
 
-            // Add the user message to the options input items
+            if (usedAgentsFile)
+                AddTrace(trace, "PromptAsset", "AGENTS.md loaded successfully");
+            else
+            {
+                AddTrace(trace, "PromptAsset", "AGENTS.md not found — using runtime instructions only");
+                warnings.Add("AGENTS.md not found");
+            }
+
+            AddTrace(trace, "PromptAsset", "Resolving relevant skills...");
+            var skills = await assetLoader.LoadRelevantSkillsAsync(userPrompt, ct);
+            loadedSkillNames.AddRange(skills.Select(s => s.Name));
+
+            if (skills.Count > 0)
+            {
+                AddTrace(trace, "PromptAsset", $"Resolved skills: {string.Join(", ", loadedSkillNames)}");
+                foreach (var skill in skills)
+                    AddTrace(trace, "PromptAsset", $"Loaded skill: {skill.Name}");
+            }
+            else
+            {
+                AddTrace(trace, "PromptAsset", "No matching skills found for this request");
+            }
+
+            composedPrompt = promptComposer.Compose(agentsInstructions, skills);
+            AddTrace(trace, "PromptAsset", "Injected prompt assets into model context");
+
+            logger.LogInformation("[Agent] Prompt assets: AGENTS.md={Used}, Skills=[{Skills}]",
+                usedAgentsFile, string.Join(", ", loadedSkillNames));
+
+            // --- Agent Loop ---
+            var options = agentClient.BuildOptions(composedPrompt);
             options.InputItems.Add(ResponseItem.CreateUserMessageItem(userPrompt));
 
             for (var iteration = 0; iteration < MaxIterations; iteration++)
@@ -29,13 +68,10 @@ public sealed class IncidentAgentRunner(
                 AddTrace(trace, "AgentLoop", $"Iteration {iteration + 1}: Sending to model...");
 
                 var response = await agentClient.CreateResponseAsync(options, ct);
-
-                // Collect function calls from the output
                 var functionCalls = response.OutputItems.OfType<FunctionCallResponseItem>().ToList();
 
                 if (functionCalls.Count == 0)
                 {
-                    // No tool calls — extract the final text response
                     AddTrace(trace, "Decision", "Agent decided: enough information gathered");
                     AddTrace(trace, "Complete", "Generating final response...");
 
@@ -45,11 +81,14 @@ public sealed class IncidentAgentRunner(
                     return new AgentResponse
                     {
                         FinalAnswer = textContent,
-                        TraceSteps = trace
+                        TraceSteps = trace,
+                        UsedAgentsFile = usedAgentsFile,
+                        LoadedSkills = loadedSkillNames,
+                        PromptAssetWarnings = warnings,
+                        ComposedPrompt = composedPrompt
                     };
                 }
 
-                // Process each function call
                 AddTrace(trace, "Decision", $"Agent decided: tool call needed ({functionCalls.Count} tool(s))");
 
                 foreach (var functionCall in functionCalls)
@@ -66,10 +105,8 @@ public sealed class IncidentAgentRunner(
                     var toolResult = await toolExecutor.ExecuteAsync(toolName, toolArgs, ct);
 
                     AddTrace(trace, "ToolResponse", $"Tool '{toolName}' returned data ({toolResult.Length} chars)");
-
                     logger.LogInformation("[Agent] Tool result preview: {Preview}", Truncate(toolResult, 200));
 
-                    // Add the function call and its output to the conversation for next iteration
                     options.InputItems.Add(functionCall);
                     options.InputItems.Add(ResponseItem.CreateFunctionCallOutputItem(callId, toolResult));
                 }
@@ -80,7 +117,11 @@ public sealed class IncidentAgentRunner(
             {
                 FinalAnswer = "I was unable to complete the request within the allowed number of steps.",
                 TraceSteps = trace,
-                IsError = true
+                IsError = true,
+                UsedAgentsFile = usedAgentsFile,
+                LoadedSkills = loadedSkillNames,
+                PromptAssetWarnings = warnings,
+                ComposedPrompt = composedPrompt
             };
         }
         catch (Exception ex)
@@ -92,7 +133,11 @@ public sealed class IncidentAgentRunner(
             {
                 FinalAnswer = $"An error occurred: {ex.Message}",
                 TraceSteps = trace,
-                IsError = true
+                IsError = true,
+                UsedAgentsFile = usedAgentsFile,
+                LoadedSkills = loadedSkillNames,
+                PromptAssetWarnings = warnings,
+                ComposedPrompt = composedPrompt
             };
         }
     }

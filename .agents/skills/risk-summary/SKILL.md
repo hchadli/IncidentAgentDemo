@@ -1,3 +1,8 @@
+---
+name: risk-summary
+description: Combines incident data and service health to produce a risk assessment for a service.
+---
+
 # Skill: Risk Summary
 
 **Name:** risk-summary  

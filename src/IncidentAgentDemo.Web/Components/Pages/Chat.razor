@@ -2,6 +2,7 @@
 @using IncidentAgentDemo.AgentHost
 @using IncidentAgentDemo.Contracts
 @inject IncidentAgentRunner AgentRunner
+@inject IPromptAssetLoader AssetLoader
 @rendermode InteractiveServer
 
 <!-- LEFT SIDEBAR -->
@@ -43,7 +44,8 @@
             <p><strong>Flow:</strong></p>
             <ol>
                 <li>User sends prompt</li>
-                <li>Agent evaluates with LLM</li>
+                <li>Agent loads AGENTS.md + skills</li>
+                <li>Composed prompt sent to LLM</li>
                 <li>LLM requests tool calls</li>
                 <li>MCP executes tools via API</li>
                 <li>API queries SQLite</li>
@@ -119,11 +121,65 @@
 <div class="trace-panel">
     <div class="trace-header">
         <h6>🔍 Agent Trace</h6>
-        @if (_traceSteps.Count > 0)
-        {
-            <button class="clear-trace-btn" @onclick="() => _traceSteps.Clear()">Clear</button>
-        }
+        <div class="trace-header-actions">
+            @if (_traceSteps.Count > 0)
+            {
+                <button class="clear-trace-btn" @onclick="() => _traceSteps.Clear()">Clear</button>
+            }
+        </div>
     </div>
+
+    <!-- PROMPT ASSETS INFO -->
+    @if (_lastResponse is not null)
+    {
+        <div class="prompt-assets-info">
+            <div class="assets-header">
+                <span>📄 Prompt Assets</span>
+                <button class="reload-assets-btn" @onclick="ReloadPromptAssets" title="Reload prompt assets from disk">🔄 Reload</button>
+            </div>
+            <div class="asset-row">
+                <span>AGENTS.md</span>
+                <span class="@(_lastResponse.UsedAgentsFile ? "asset-loaded" : "asset-missing")">
+                    @(_lastResponse.UsedAgentsFile ? "✅ Loaded" : "❌ Not found")
+                </span>
+            </div>
+            @if (_lastResponse.LoadedSkills.Count > 0)
+            {
+                <div class="asset-row">
+                    <span>Skills:</span>
+                </div>
+                <div class="skill-tags">
+                    @foreach (var skill in _lastResponse.LoadedSkills)
+                    {
+                        <span class="skill-tag">@skill</span>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="asset-row">
+                    <span>Skills:</span>
+                    <span class="asset-none">none matched</span>
+                </div>
+            }
+            @foreach (var warning in _lastResponse.PromptAssetWarnings)
+            {
+                <div class="asset-warning">⚠️ @warning</div>
+            }
+            @if (_lastResponse.ComposedPrompt is not null)
+            {
+                <button class="toggle-debug-btn" @onclick="() => _showComposedPrompt = !_showComposedPrompt">
+                    @(_showComposedPrompt ? "▼ Hide" : "▶ Show") Composed Prompt
+                </button>
+                @if (_showComposedPrompt)
+                {
+                    <div class="composed-prompt-view">
+                        <pre>@_lastResponse.ComposedPrompt</pre>
+                    </div>
+                }
+            }
+        </div>
+    }
 
     <div class="trace-content">
         @if (_traceSteps.Count == 0)
@@ -150,6 +206,8 @@
     private bool _isLoading;
     private string? _errorMessage;
     private bool _showArchitecture;
+    private bool _showComposedPrompt;
+    private AgentResponse? _lastResponse;
     private readonly List<ChatEntry> _responses = [];
     private readonly List<AgentTraceStep> _traceSteps = [];
 
@@ -173,6 +231,7 @@
         _isLoading = true;
         _errorMessage = null;
         _traceSteps.Clear();
+        _showComposedPrompt = false;
         StateHasChanged();
 
         try
@@ -183,6 +242,7 @@
                 _traceSteps.Add(step);
 
             _responses.Add(new ChatEntry(prompt, response));
+            _lastResponse = response;
 
             if (response.IsError)
                 _errorMessage = "Agent encountered an error. See trace for details.";
@@ -196,6 +256,14 @@
             _isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private void ReloadPromptAssets()
+    {
+        AssetLoader.InvalidateCache();
+        _lastResponse = null;
+        _showComposedPrompt = false;
+        StateHasChanged();
     }
 
     private static string FormatMarkdown(string text)
@@ -225,6 +293,7 @@
         "ToolSelected" => "trace-tool",
         "ToolArgs" => "trace-tool",
         "ToolResponse" => "trace-tool-response",
+        "PromptAsset" => "trace-prompt-asset",
         "Error" => "trace-error",
         "Complete" or "Result" => "trace-complete",
         _ => "trace-info"
@@ -238,6 +307,7 @@
         "ToolSelected" => "🔧",
         "ToolArgs" => "📦",
         "ToolResponse" => "📨",
+        "PromptAsset" => "📄",
         "Complete" => "✅",
         "Result" => "🎯",
         "Error" => "❌",

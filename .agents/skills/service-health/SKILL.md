@@ -1,3 +1,8 @@
+---
+name: service-health
+description: Checks and reports the current health status of platform services.
+---
+
 # Skill: Service Health
 
 **Name:** service-health  

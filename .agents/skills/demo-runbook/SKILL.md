@@ -1,3 +1,8 @@
+---
+name: demo-runbook
+description: Step-by-step guide for running the IncidentAgentDemo for presentations and walkthroughs.
+---
+
 # Skill: Demo Runbook
 
 **Name:** demo-runbook  
