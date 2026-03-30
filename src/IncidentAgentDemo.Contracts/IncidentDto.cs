@@ -7,4 +7,6 @@ public sealed record IncidentDto(
     string Severity,
     string Status,
     DateTime CreatedAtUtc,
-    string Summary);
+    string Summary,
+    DateTime? ClosedAtUtc = null,
+    string? ResolutionNote = null);

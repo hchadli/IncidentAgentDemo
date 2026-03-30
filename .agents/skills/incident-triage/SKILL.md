@@ -39,3 +39,12 @@ When the user asks about incidents for a service:
 - Calls `get_open_incidents()` (no filter — all services)
 - Sorts by severity and recency
 - Presents top items with context
+
+## Relationship with Incident Lifecycle
+
+If the user asks to **create** or **close** an incident during triage, defer to the `incident-lifecycle` skill:
+
+- Use `create_incident` to open a new incident when a problem is identified during triage.
+- Use `close_incident` to close a resolved incident after confirming the ID.
+
+Triage tools (`get_open_incidents`, `get_incident_by_id`) are read-only — they never modify data.

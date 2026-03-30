@@ -1,4 +1,5 @@
 using System.Text.Json;
+using IncidentAgentDemo.Contracts;
 
 namespace IncidentAgentDemo.McpServer;
 
@@ -14,7 +15,9 @@ public sealed class McpToolRegistry(IncidentApiClient apiClient)
     [
         ToolDefinitions.GetOpenIncidents,
         ToolDefinitions.GetIncidentById,
-        ToolDefinitions.GetServiceHealth
+        ToolDefinitions.GetServiceHealth,
+        ToolDefinitions.CreateIncident,
+        ToolDefinitions.CloseIncident
     ];
 
     public async Task<string> ExecuteToolAsync(string toolName, string argumentsJson, CancellationToken ct = default)
@@ -28,6 +31,8 @@ public sealed class McpToolRegistry(IncidentApiClient apiClient)
                 ToolDefinitions.GetOpenIncidents => await ExecuteGetOpenIncidentsAsync(args, ct),
                 ToolDefinitions.GetIncidentById => await ExecuteGetIncidentByIdAsync(args, ct),
                 ToolDefinitions.GetServiceHealth => await ExecuteGetServiceHealthAsync(args, ct),
+                ToolDefinitions.CreateIncident => await ExecuteCreateIncidentAsync(args, ct),
+                ToolDefinitions.CloseIncident => await ExecuteCloseIncidentAsync(args, ct),
                 _ => JsonSerializer.Serialize(new { error = $"Unknown tool: {toolName}" })
             };
         }
@@ -71,5 +76,36 @@ public sealed class McpToolRegistry(IncidentApiClient apiClient)
         return result is not null
             ? JsonSerializer.Serialize(result, JsonOptions)
             : JsonSerializer.Serialize(new { error = $"Service '{serviceName}' not found" });
+    }
+
+    private async Task<string> ExecuteCreateIncidentAsync(JsonElement args, CancellationToken ct)
+    {
+        var title = args.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "";
+        var serviceName = args.TryGetProperty("serviceName", out var sn) ? sn.GetString() ?? "" : "";
+        var severity = args.TryGetProperty("severity", out var sev) ? sev.GetString() ?? "" : "";
+        var summary = args.TryGetProperty("summary", out var sum) ? sum.GetString() ?? "" : "";
+
+        var request = new CreateIncidentRequest(title, serviceName, severity, summary);
+        var (incident, error) = await apiClient.CreateIncidentAsync(request, ct);
+
+        return incident is not null
+            ? JsonSerializer.Serialize(new { success = true, incident }, JsonOptions)
+            : JsonSerializer.Serialize(new { error = error ?? "Failed to create incident" });
+    }
+
+    private async Task<string> ExecuteCloseIncidentAsync(JsonElement args, CancellationToken ct)
+    {
+        if (!args.TryGetProperty("id", out var idProp))
+            return JsonSerializer.Serialize(new { error = "Missing required parameter: id" });
+
+        var id = idProp.GetInt32();
+        var resolutionNote = args.TryGetProperty("resolutionNote", out var rn) ? rn.GetString() : null;
+
+        var request = new CloseIncidentRequest(resolutionNote);
+        var (incident, error) = await apiClient.CloseIncidentAsync(id, request, ct);
+
+        return incident is not null
+            ? JsonSerializer.Serialize(new { success = true, incident }, JsonOptions)
+            : JsonSerializer.Serialize(new { error = error ?? $"Failed to close incident {id}" });
     }
 }

@@ -28,6 +28,10 @@ public class PromptAssetsTests : IDisposable
     [InlineData("What is the impact assessment?", "risk-summary")]
     [InlineData("Explain the architecture", "demo-runbook")]
     [InlineData("Show me the demo walkthrough", "demo-runbook")]
+    [InlineData("Create a new incident for Payments", "incident-lifecycle")]
+    [InlineData("Open an incident for Identity", "incident-lifecycle")]
+    [InlineData("Close incident 3", "incident-lifecycle")]
+    [InlineData("Resolve incident 5 with a note", "incident-lifecycle")]
     public void SkillResolver_MatchesSingleSkill(string input, string expectedSkill)
     {
         var resolver = new SkillResolver();

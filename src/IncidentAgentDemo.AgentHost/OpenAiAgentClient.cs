@@ -80,6 +80,18 @@ public sealed class OpenAiAgentClient
             null,
             ToolDefinitions.GetServiceHealthDescription));
 
+        options.Tools.Add(ResponseTool.CreateFunctionTool(
+            ToolDefinitions.CreateIncident,
+            BinaryData.FromString(ToolDefinitions.CreateIncidentParameters),
+            null,
+            ToolDefinitions.CreateIncidentDescription));
+
+        options.Tools.Add(ResponseTool.CreateFunctionTool(
+            ToolDefinitions.CloseIncident,
+            BinaryData.FromString(ToolDefinitions.CloseIncidentParameters),
+            null,
+            ToolDefinitions.CloseIncidentDescription));
+
         return options;
     }
 }

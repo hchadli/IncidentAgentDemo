@@ -11,6 +11,8 @@ public sealed class Incident
     public required string Status { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public required string Summary { get; set; }
+    public DateTime? ClosedAtUtc { get; set; }
+    public string? ResolutionNote { get; set; }
 }
 
 public sealed class ServiceHealth
@@ -37,6 +39,7 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
             e.Property(x => x.Severity).IsRequired().HasMaxLength(32);
             e.Property(x => x.Status).IsRequired().HasMaxLength(32);
             e.Property(x => x.Summary).IsRequired().HasMaxLength(1024);
+            e.Property(x => x.ResolutionNote).HasMaxLength(1024);
         });
 
         modelBuilder.Entity<ServiceHealth>(e =>

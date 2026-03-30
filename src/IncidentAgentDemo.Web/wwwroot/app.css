@@ -66,6 +66,16 @@ html, body {
     border-color: rgba(99, 102, 241, 0.3);
 }
 
+.action-btn {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.action-btn:hover {
+    background: rgba(16, 185, 129, 0.25);
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
 .architecture-info {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;

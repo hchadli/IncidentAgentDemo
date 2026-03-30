@@ -4,9 +4,9 @@ public static class SeedData
 {
     public static async Task InitializeAsync(IncidentDbContext db)
     {
+        // Demo app: always recreate the database to pick up schema changes
+        await db.Database.EnsureDeletedAsync();
         await db.Database.EnsureCreatedAsync();
-
-        if (db.Incidents.Any()) return;
 
         var now = DateTime.UtcNow;
 

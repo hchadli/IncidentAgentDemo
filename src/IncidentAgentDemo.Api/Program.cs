@@ -35,7 +35,8 @@ app.MapGet("/incidents/open", async (string? serviceName, IncidentDbContext db) 
         .OrderByDescending(i => i.CreatedAtUtc)
         .Select(i => new IncidentDto(
             i.Id, i.Title, i.ServiceName, i.Severity,
-            i.Status, i.CreatedAtUtc, i.Summary))
+            i.Status, i.CreatedAtUtc, i.Summary,
+            i.ClosedAtUtc, i.ResolutionNote))
         .ToListAsync();
 
     return Results.Ok(new OpenIncidentsResponse(
@@ -54,7 +55,66 @@ app.MapGet("/incidents/{id:int}", async (int id, IncidentDbContext db) =>
     return Results.Ok(new IncidentDto(
         incident.Id, incident.Title, incident.ServiceName,
         incident.Severity, incident.Status, incident.CreatedAtUtc,
-        incident.Summary));
+        incident.Summary, incident.ClosedAtUtc, incident.ResolutionNote));
+});
+
+// POST /incidents
+app.MapPost("/incidents", async (CreateIncidentRequest request, IncidentDbContext db) =>
+{
+    var validSeverities = new[] { "Low", "Medium", "High", "Critical" };
+
+    if (string.IsNullOrWhiteSpace(request.Title))
+        return Results.BadRequest(new { error = "Title is required." });
+    if (string.IsNullOrWhiteSpace(request.ServiceName))
+        return Results.BadRequest(new { error = "ServiceName is required." });
+    if (string.IsNullOrWhiteSpace(request.Severity))
+        return Results.BadRequest(new { error = "Severity is required." });
+    if (!validSeverities.Contains(request.Severity, StringComparer.OrdinalIgnoreCase))
+        return Results.BadRequest(new { error = $"Severity must be one of: {string.Join(", ", validSeverities)}." });
+    if (string.IsNullOrWhiteSpace(request.Summary))
+        return Results.BadRequest(new { error = "Summary is required." });
+
+    var incident = new Incident
+    {
+        Title = request.Title.Trim(),
+        ServiceName = request.ServiceName.Trim(),
+        Severity = request.Severity.Trim(),
+        Status = "Open",
+        CreatedAtUtc = DateTime.UtcNow,
+        Summary = request.Summary.Trim()
+    };
+
+    db.Incidents.Add(incident);
+    await db.SaveChangesAsync();
+
+    var dto = new IncidentDto(
+        incident.Id, incident.Title, incident.ServiceName,
+        incident.Severity, incident.Status, incident.CreatedAtUtc,
+        incident.Summary);
+
+    return Results.Created($"/incidents/{incident.Id}", dto);
+});
+
+// POST /incidents/{id}/close
+app.MapPost("/incidents/{id:int}/close", async (int id, CloseIncidentRequest? request, IncidentDbContext db) =>
+{
+    var incident = await db.Incidents.FindAsync(id);
+    if (incident is null)
+        return Results.NotFound(new { error = $"Incident {id} not found." });
+
+    if (incident.Status is "Closed" or "Resolved")
+        return Results.BadRequest(new { error = $"Incident {id} is already {incident.Status}." });
+
+    incident.Status = "Closed";
+    incident.ClosedAtUtc = DateTime.UtcNow;
+    incident.ResolutionNote = request?.ResolutionNote?.Trim();
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new IncidentDto(
+        incident.Id, incident.Title, incident.ServiceName,
+        incident.Severity, incident.Status, incident.CreatedAtUtc,
+        incident.Summary, incident.ClosedAtUtc, incident.ResolutionNote));
 });
 
 // GET /services/{serviceName}/health

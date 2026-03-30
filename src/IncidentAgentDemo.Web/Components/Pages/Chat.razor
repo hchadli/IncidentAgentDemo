@@ -32,6 +32,16 @@
     </div>
 
     <div class="sidebar-section">
+        <h6>Actions</h6>
+        <button class="prompt-btn action-btn" @onclick='() => SendPromptAsync("Create a new High severity incident for Payments titled \"API latency spike\" with summary: Average response time exceeded 5s for checkout endpoints")'>
+            ➕ Create Payments Incident
+        </button>
+        <button class="prompt-btn action-btn" @onclick='() => SendPromptAsync("Close incident 5 with resolution note: SMS delivery delays resolved after Twilio carrier throttling ended")'>
+            ✅ Close Incident #5
+        </button>
+    </div>
+
+    <div class="sidebar-section">
         <h6>Architecture</h6>
         <button class="prompt-btn arch-btn" @onclick="ToggleArchitecture">
             🏗️ Explain Architecture
